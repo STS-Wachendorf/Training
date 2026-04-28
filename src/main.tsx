@@ -5,8 +5,10 @@ import './index.css'
 import { RootLayout } from './layouts/RootLayout'
 import { ProtectedLayout } from './layouts/ProtectedLayout'
 import { AuthLayout } from './layouts/AuthLayout'
-import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import WaitingArea from './pages/WaitingArea'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,14 +17,14 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>
-            <Route path="login" element={<div>Login</div>} />
-            <Route path="register" element={<div>Register</div>} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
           </Route>
 
           {/* Protected Routes */}
           <Route element={<ProtectedLayout />}>
             <Route element={<RootLayout />}>
-              <Route path="/" element={<App />} />
+              <Route path="/" element={<WaitingArea />} />
             </Route>
           </Route>
         </Routes>
