@@ -65,3 +65,81 @@ CREATE TRIGGER on_auth_user_created
 -- Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.trainings;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
+
+-- Enable Row Level Security
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.trainings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+
+-- Helper function to check if the current user is an admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- Profiles Policies
+CREATE POLICY "Profiles are viewable by everyone" ON public.profiles
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can update their own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Admins can manage all profiles" ON public.profiles
+  FOR ALL USING (public.is_admin());
+
+-- Groups Policies
+CREATE POLICY "Users can view groups they are members of" ON public.groups
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.group_members
+      WHERE group_id = groups.id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can manage all groups" ON public.groups
+  FOR ALL USING (public.is_admin());
+
+-- Group Members Policies
+CREATE POLICY "Users can view their own membership" ON public.group_members
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Admins can manage all group memberships" ON public.group_members
+  FOR ALL USING (public.is_admin());
+
+-- Training Templates Policies
+CREATE POLICY "Users can view templates for their groups" ON public.training_templates
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.group_members
+      WHERE group_id = training_templates.group_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can manage all training templates" ON public.training_templates
+  FOR ALL USING (public.is_admin());
+
+-- Trainings Policies
+CREATE POLICY "Users can view trainings for their groups" ON public.trainings
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.training_templates tt
+      JOIN public.group_members gm ON tt.group_id = gm.group_id
+      WHERE tt.id = trainings.template_id AND gm.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can manage all trainings" ON public.trainings
+  FOR ALL USING (public.is_admin());
+
+-- Attendance Policies
+CREATE POLICY "Users can manage their own attendance" ON public.attendance
+  FOR ALL USING (user_id = auth.uid());
+
+CREATE POLICY "Admins can manage all attendance" ON public.attendance
+  FOR ALL USING (public.is_admin());
